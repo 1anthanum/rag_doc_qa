@@ -9,7 +9,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from ..ingestion.chunker import Chunk
 from ..ingestion.embedder import EmbeddedChunk
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SearchResult:
     """A single search result with score."""
+
     chunk: Chunk
     score: float  # Higher = more similar
 
@@ -33,9 +34,7 @@ class VectorStore(ABC):
         pass
 
     @abstractmethod
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[SearchResult]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[SearchResult]:
         """Search for most similar chunks."""
         pass
 
@@ -79,9 +78,7 @@ class FAISSVectorStore(VectorStore):
         try:
             import faiss
         except ImportError:
-            raise ImportError(
-                "faiss-cpu required. Install: pip install faiss-cpu"
-            )
+            raise ImportError("faiss-cpu required. Install: pip install faiss-cpu")
 
         self.dimension = dimension
         self._index = faiss.IndexFlatIP(dimension)
@@ -96,9 +93,9 @@ class FAISSVectorStore(VectorStore):
         if not embedded_chunks:
             return
 
-        embeddings = np.stack(
-            [ec.embedding for ec in embedded_chunks]
-        ).astype(np.float32)
+        embeddings = np.stack([ec.embedding for ec in embedded_chunks]).astype(
+            np.float32
+        )
 
         # Normalize for cosine similarity via inner product
         norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
@@ -109,13 +106,10 @@ class FAISSVectorStore(VectorStore):
         self._chunks.extend([ec.chunk for ec in embedded_chunks])
 
         logger.info(
-            f"Added {len(embedded_chunks)} vectors to FAISS "
-            f"(total: {self.size})"
+            f"Added {len(embedded_chunks)} vectors to FAISS " f"(total: {self.size})"
         )
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[SearchResult]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[SearchResult]:
         """Search for top-k most similar chunks."""
         if self.size == 0:
             return []
@@ -141,6 +135,7 @@ class FAISSVectorStore(VectorStore):
     def clear(self) -> None:
         """Remove all vectors from the FAISS index."""
         import faiss
+
         self._index = faiss.IndexFlatIP(self.dimension)
         self._chunks.clear()
         logger.info("Cleared FAISS index")
@@ -157,14 +152,16 @@ class FAISSVectorStore(VectorStore):
         # Save chunk metadata
         chunks_data = []
         for chunk in self._chunks:
-            chunks_data.append({
-                "text": chunk.text,
-                "chunk_id": chunk.chunk_id,
-                "source": chunk.source,
-                "start_char": chunk.start_char,
-                "end_char": chunk.end_char,
-                "metadata": chunk.metadata,
-            })
+            chunks_data.append(
+                {
+                    "text": chunk.text,
+                    "chunk_id": chunk.chunk_id,
+                    "source": chunk.source,
+                    "start_char": chunk.start_char,
+                    "end_char": chunk.end_char,
+                    "metadata": chunk.metadata,
+                }
+            )
 
         with open(save_dir / "chunks.json", "w", encoding="utf-8") as f:
             json.dump(chunks_data, f, ensure_ascii=False, indent=2)
@@ -221,14 +218,10 @@ class ChromaVectorStore(VectorStore):
         try:
             import chromadb
         except ImportError:
-            raise ImportError(
-                "chromadb required. Install: pip install chromadb"
-            )
+            raise ImportError("chromadb required. Install: pip install chromadb")
 
         if persist_directory:
-            self._client = chromadb.PersistentClient(
-                path=persist_directory
-            )
+            self._client = chromadb.PersistentClient(path=persist_directory)
         else:
             self._client = chromadb.Client()
 
@@ -277,9 +270,7 @@ class ChromaVectorStore(VectorStore):
             f"(total: {self.size})"
         )
 
-    def search(
-        self, query_embedding: np.ndarray, top_k: int = 5
-    ) -> List[SearchResult]:
+    def search(self, query_embedding: np.ndarray, top_k: int = 5) -> List[SearchResult]:
         """Search ChromaDB for similar chunks."""
         if self.size == 0:
             return []
@@ -316,7 +307,8 @@ class ChromaVectorStore(VectorStore):
         metadata = self._collection.metadata
         self._client.delete_collection(name)
         self._collection = self._client.get_or_create_collection(
-            name=name, metadata=metadata,
+            name=name,
+            metadata=metadata,
         )
         self._chunks.clear()
         logger.info(f"Cleared ChromaDB collection '{name}'")

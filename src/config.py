@@ -103,7 +103,9 @@ def get(key_path: str, default: Any = None) -> Any:
 
     env_value = os.getenv(env_key)
     if env_value is not None:
-        return _cast_env_value(env_value, yaml_value if yaml_value is not None else default)
+        return _cast_env_value(
+            env_value, yaml_value if yaml_value is not None else default
+        )
 
     # Step 3: Return YAML value or default
     return yaml_value if yaml_value is not None else default

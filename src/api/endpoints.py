@@ -7,15 +7,15 @@ import asyncio
 import os
 import logging
 import tempfile
-from typing import List, Optional
+from typing import List
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ..config import get as cfg
-from ..security import sanitize_filename, validate_file_magic
+from ..security import validate_upload
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,8 @@ class HealthResponse(BaseModel):
     status: str
     index_size: int
     embedding_model: str
+    retrieval_mode: str = "simple"
+    agentic: bool = False
 
 
 # ── App Factory ──────────────────────────────────────────────────
@@ -95,7 +97,7 @@ def create_app(
     import time
 
     _rate_limit_store: dict = defaultdict(list)
-    _RATE_LIMIT_WINDOW = 60   # seconds
+    _RATE_LIMIT_WINDOW = 60  # seconds
     _RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX", "30"))
 
     @app.middleware("http")
@@ -110,12 +112,12 @@ def create_app(
 
         # Clean old entries
         _rate_limit_store[client_ip] = [
-            t for t in _rate_limit_store[client_ip]
-            if now - t < _RATE_LIMIT_WINDOW
+            t for t in _rate_limit_store[client_ip] if now - t < _RATE_LIMIT_WINDOW
         ]
 
         if len(_rate_limit_store[client_ip]) >= _RATE_LIMIT_MAX_REQUESTS:
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=429,
                 content={
@@ -142,12 +144,19 @@ def create_app(
         """Check API health and index status."""
         store = app.state.vector_store
         engine = app.state.embedding_engine
+        from ..retrieval.hybrid_retriever import HybridRetriever
+        from ..generation.agentic_chain import AgenticRAGChain
+
+        retriever = app.state.retriever
+        chain = app.state.rag_chain
         return HealthResponse(
             status="healthy",
             index_size=store.size if store else 0,
-            embedding_model=(
-                engine.provider if engine else "not initialized"
+            embedding_model=(engine.provider if engine else "not initialized"),
+            retrieval_mode=(
+                "hybrid" if isinstance(retriever, HybridRetriever) else "simple"
             ),
+            agentic=isinstance(chain, AgenticRAGChain),
         )
 
     @app.post("/query", response_model=QueryResponse)
@@ -218,9 +227,7 @@ def create_app(
                     doc = loader.load_file(str(tmp_path))
                     documents.append(doc)
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to load {safe_name}: {e}"
-                    )
+                    logger.warning(f"Failed to load {safe_name}: {e}")
 
         if not documents:
             raise HTTPException(
@@ -232,6 +239,11 @@ def create_app(
         chunks = await asyncio.to_thread(chunker_inst.chunk_documents, documents)
         embedded = await asyncio.to_thread(engine.embed_chunks, chunks)
         await asyncio.to_thread(store.add, embedded)
+
+        # Build BM25 index for hybrid retrieval if applicable
+        retriever = app.state.retriever
+        if retriever and hasattr(retriever, "index_sparse"):
+            await asyncio.to_thread(retriever.index_sparse, chunks)
 
         return IndexResponse(
             message="Documents indexed successfully.",
@@ -245,7 +257,8 @@ def create_app(
         store = app.state.vector_store
         if not store:
             raise HTTPException(
-                status_code=503, detail="Vector store not initialized.",
+                status_code=503,
+                detail="Vector store not initialized.",
             )
         store.clear()
         return {"message": "Index cleared."}

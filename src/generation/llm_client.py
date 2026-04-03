@@ -7,7 +7,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GenerationResult:
     """Result from LLM generation."""
+
     text: str
     model: str
     usage: Dict[str, int]  # prompt_tokens, completion_tokens, total_tokens
@@ -55,9 +56,7 @@ class OpenAIClient(LLMClient):
             raise ImportError("openai required. Install: pip install openai")
 
         self.model = model
-        self._client = openai.OpenAI(
-            api_key=api_key or os.getenv("OPENAI_API_KEY")
-        )
+        self._client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
         logger.info(f"Initialized OpenAI client with model: {model}")
 
     def generate(

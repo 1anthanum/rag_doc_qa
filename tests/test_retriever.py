@@ -6,8 +6,7 @@ import numpy as np
 from src.ingestion.chunker import Chunk
 from src.ingestion.embedder import EmbeddedChunk
 from src.retrieval.vector_store import FAISSVectorStore, SearchResult
-from src.retrieval.retriever import Retriever, RetrievalResult
-
+from src.retrieval.retriever import RetrievalResult
 
 # ── Fixtures ────────────────────────────────────────────────────
 
@@ -151,12 +150,30 @@ class TestRetrievalResult:
     def test_sources_deduplication(self):
         """Test sources property deduplicates filenames."""
         chunks = [
-            Chunk(text="a", chunk_id=0, source="a.txt", start_char=0,
-                  end_char=1, metadata={"filename": "a.txt"}),
-            Chunk(text="b", chunk_id=1, source="a.txt", start_char=0,
-                  end_char=1, metadata={"filename": "a.txt"}),
-            Chunk(text="c", chunk_id=2, source="b.txt", start_char=0,
-                  end_char=1, metadata={"filename": "b.txt"}),
+            Chunk(
+                text="a",
+                chunk_id=0,
+                source="a.txt",
+                start_char=0,
+                end_char=1,
+                metadata={"filename": "a.txt"},
+            ),
+            Chunk(
+                text="b",
+                chunk_id=1,
+                source="a.txt",
+                start_char=0,
+                end_char=1,
+                metadata={"filename": "a.txt"},
+            ),
+            Chunk(
+                text="c",
+                chunk_id=2,
+                source="b.txt",
+                start_char=0,
+                end_char=1,
+                metadata={"filename": "b.txt"},
+            ),
         ]
         results = [SearchResult(chunk=c, score=0.5) for c in chunks]
         rr = RetrievalResult(query="test", results=results)

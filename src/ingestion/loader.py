@@ -3,11 +3,10 @@ Document loader supporting multiple file formats.
 Extracts raw text from PDF, TXT, Markdown, and DOCX files.
 """
 
-import os
 import logging
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Document:
     """Represents a loaded document with metadata."""
+
     content: str
     source: str
     doc_type: str
@@ -81,9 +81,7 @@ class DocumentLoader:
             },
         )
 
-    def load_directory(
-        self, dir_path: str, recursive: bool = True
-    ) -> List[Document]:
+    def load_directory(self, dir_path: str, recursive: bool = True) -> List[Document]:
         """Load all supported files from a directory."""
         dir_path = Path(dir_path)
         if not dir_path.is_dir():
@@ -98,8 +96,7 @@ class DocumentLoader:
                     doc = self.load_file(str(file_path))
                     documents.append(doc)
                     logger.info(
-                        f"  Loaded: {file_path.name} "
-                        f"({doc.word_count} words)"
+                        f"  Loaded: {file_path.name} " f"({doc.word_count} words)"
                     )
                 except Exception as e:
                     logger.warning(f"  Failed to load {file_path.name}: {e}")

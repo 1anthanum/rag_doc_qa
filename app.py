@@ -1,6 +1,7 @@
 """
 Streamlit frontend for RAG Document Q&A.
 Provides a chat-like interface for uploading documents and asking questions.
+Supports: simple/hybrid retrieval, semantic chunking, query optimization, CRAG.
 """
 
 import os
@@ -32,46 +33,121 @@ def init_pipeline():
     """Initialize RAG pipeline components (cached across reruns)."""
     from src.ingestion import DocumentLoader, TextChunker, ChunkingStrategy
     from src.ingestion.embedder import EmbeddingEngine
-    from src.retrieval import FAISSVectorStore, Retriever
-    from src.generation import RAGChain
+    from src.retrieval import FAISSVectorStore, Retriever, HybridRetriever
+    from src.retrieval.query_processor import QueryProcessor
+    from src.generation import RAGChain, AgenticRAGChain
     from src.generation.llm_client import OpenAIClient, OllamaClient
 
     # Config — YAML defaults with environment variable overrides
-    embedding_provider = os.getenv(
-        "EMBEDDING_PROVIDER", cfg("ingestion.embedding.provider", "local")
-    )
-    embedding_model = os.getenv(
-        "EMBEDDING_MODEL", cfg("ingestion.embedding.model", "all-MiniLM-L6-v2")
-    )
-    llm_provider = os.getenv(
-        "LLM_PROVIDER", cfg("generation.provider", "openai")
-    )
-    llm_model = os.getenv(
-        "LLM_MODEL", cfg("generation.model", "gpt-4o-mini")
-    )
+    embedding_provider = cfg("ingestion.embedding.provider", "local")
+    embedding_model = cfg("ingestion.embedding.model", "all-MiniLM-L6-v2")
+    llm_provider = cfg("generation.provider", "openai")
+    llm_model = cfg("generation.model", "gpt-4o-mini")
+
+    # Chunking config
+    chunk_strategy_str = cfg("ingestion.chunking.strategy", "recursive")
+    chunk_size = cfg("ingestion.chunking.chunk_size", 512)
+    chunk_overlap = cfg("ingestion.chunking.overlap", 64)
+    semantic_threshold = cfg("ingestion.chunking.semantic_threshold", 0.5)
+
+    # Retrieval config
+    retrieval_mode = cfg("retrieval.mode", "simple")
+    top_k = cfg("retrieval.top_k", 5)
+    rerank = cfg("retrieval.rerank", False)
+    rerank_model = cfg("retrieval.rerank_model", None)
+
+    # Hybrid search config
+    hybrid_enabled = cfg("retrieval.hybrid_search.enabled", False)
+    dense_weight = cfg("retrieval.hybrid_search.dense_weight", 0.7)
+    sparse_weight = cfg("retrieval.hybrid_search.sparse_weight", 0.3)
+    rrf_k = cfg("retrieval.hybrid_search.rrf_k", 60)
+
+    # Query processing config
+    qp_enabled = cfg("retrieval.query_processing.enabled", False)
+    qp_strategy = cfg("retrieval.query_processing.strategy", "none")
+
+    # Agentic config
+    agentic_enabled = cfg("agentic.enabled", False)
+    max_correction_rounds = cfg("agentic.max_correction_rounds", 2)
+    adaptive_retrieval = cfg("agentic.adaptive_retrieval", True)
 
     loader = DocumentLoader()
-    chunker = TextChunker(
-        chunk_size=512,
-        overlap=64,
-        strategy=ChunkingStrategy.RECURSIVE,
-    )
+
+    # Resolve chunking strategy
+    strategy_map = {
+        "fixed_size": ChunkingStrategy.FIXED_SIZE,
+        "sentence": ChunkingStrategy.SENTENCE,
+        "recursive": ChunkingStrategy.RECURSIVE,
+        "semantic": ChunkingStrategy.SEMANTIC,
+    }
+    strategy = strategy_map.get(chunk_strategy_str, ChunkingStrategy.RECURSIVE)
+
     engine = EmbeddingEngine(
         provider=embedding_provider, model_name=embedding_model
     )
-    store = FAISSVectorStore(dimension=engine.dimension)
-    retriever = Retriever(
-        embedding_engine=engine,
-        vector_store=store,
-        top_k=5,
-    )
 
+    # Semantic chunking needs embedder reference
+    chunker_kwargs = {
+        "chunk_size": chunk_size,
+        "overlap": chunk_overlap,
+        "strategy": strategy,
+    }
+    if strategy == ChunkingStrategy.SEMANTIC:
+        chunker_kwargs["embedder"] = engine.embedder
+        chunker_kwargs["semantic_threshold"] = semantic_threshold
+
+    chunker = TextChunker(**chunker_kwargs)
+
+    store = FAISSVectorStore(dimension=engine.dimension)
+
+    # Build retriever (simple or hybrid)
+    use_hybrid = retrieval_mode == "hybrid" or hybrid_enabled
+    if use_hybrid:
+        retriever = HybridRetriever(
+            embedding_engine=engine,
+            vector_store=store,
+            top_k=top_k,
+            dense_weight=dense_weight,
+            sparse_weight=sparse_weight,
+            rrf_k=rrf_k,
+            rerank=rerank,
+            rerank_model=rerank_model,
+        )
+    else:
+        retriever = Retriever(
+            embedding_engine=engine,
+            vector_store=store,
+            top_k=top_k,
+            rerank=rerank,
+            rerank_model=rerank_model,
+        )
+
+    # Build LLM client
     if llm_provider == "ollama":
         llm = OllamaClient(model=llm_model)
     else:
         llm = OpenAIClient(model=llm_model)
 
-    chain = RAGChain(retriever=retriever, llm=llm)
+    # Build query processor (optional)
+    query_processor = None
+    if qp_enabled and qp_strategy != "none":
+        query_processor = QueryProcessor(llm=llm, strategy=qp_strategy)
+
+    # Build chain (standard or agentic)
+    if agentic_enabled:
+        chain = AgenticRAGChain(
+            retriever=retriever,
+            llm=llm,
+            query_processor=query_processor,
+            max_correction_rounds=max_correction_rounds,
+            adaptive_retrieval=adaptive_retrieval,
+        )
+    else:
+        chain = RAGChain(
+            retriever=retriever,
+            llm=llm,
+            query_processor=query_processor,
+        )
 
     return {
         "loader": loader,
@@ -80,6 +156,8 @@ def init_pipeline():
         "store": store,
         "retriever": retriever,
         "chain": chain,
+        "is_hybrid": use_hybrid,
+        "is_agentic": agentic_enabled,
     }
 
 
@@ -112,6 +190,15 @@ def render_sidebar():
         store = pipeline["store"]
         st.metric("Indexed Chunks", store.size)
 
+        # Pipeline info
+        badges = []
+        if pipeline.get("is_hybrid"):
+            badges.append("Hybrid Search")
+        if pipeline.get("is_agentic"):
+            badges.append("Agentic (CRAG)")
+        if badges:
+            st.caption(f"Active: {' | '.join(badges)}")
+
         st.divider()
 
         # Query settings
@@ -135,6 +222,7 @@ def index_documents(uploaded_files):
     chunker = pipeline["chunker"]
     engine = pipeline["engine"]
     store = pipeline["store"]
+    retriever = pipeline["retriever"]
 
     progress = st.sidebar.progress(0, text="Loading documents...")
     documents = []
@@ -189,9 +277,15 @@ def index_documents(uploaded_files):
     progress.progress(0.6, text=f"Embedding {len(chunks)} chunks...")
     embedded = engine.embed_chunks(chunks)
 
-    # Store
+    # Store in vector store
     progress.progress(0.8, text="Adding to vector store...")
     store.add(embedded)
+
+    # Also build BM25 index for hybrid retrieval
+    from src.retrieval.hybrid_retriever import HybridRetriever
+    if isinstance(retriever, HybridRetriever):
+        progress.progress(0.9, text="Building BM25 index...")
+        retriever.index_sparse(chunks)
 
     progress.progress(1.0, text="Done!")
     st.sidebar.success(

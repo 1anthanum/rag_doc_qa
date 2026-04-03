@@ -28,10 +28,7 @@ def sample_document():
 @pytest.fixture
 def long_document():
     """Create a long document for chunk boundary testing."""
-    paragraphs = [
-        f"Paragraph {i}. " + "This is filler text. " * 20
-        for i in range(10)
-    ]
+    paragraphs = [f"Paragraph {i}. " + "This is filler text. " * 20 for i in range(10)]
     return Document(
         content="\n\n".join(paragraphs),
         source="long.txt",
@@ -70,9 +67,9 @@ class TestTextChunker:
         # Each chunk should end at a sentence boundary (period)
         for chunk in chunks:
             text = chunk.text.strip()
-            assert text[-1] in ".!?", (
-                f"Chunk should end at sentence boundary: '{text[-20:]}'"
-            )
+            assert (
+                text[-1] in ".!?"
+            ), f"Chunk should end at sentence boundary: '{text[-20:]}'"
 
     def test_recursive_chunking(self, sample_document):
         """Test recursive chunking tries paragraph boundaries first."""
@@ -118,7 +115,7 @@ class TestTextChunker:
             source="short.txt",
             doc_type="txt",
         )
-        chunker = TextChunker(chunk_size=500, overlap=50)
+        chunker = TextChunker(chunk_size=500, overlap=50, min_chunk_size=5)
         chunks = chunker.chunk_document(doc)
 
         assert len(chunks) == 1

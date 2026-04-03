@@ -3,7 +3,6 @@ Retriever: orchestrates query embedding + vector search + optional reranking.
 """
 
 import logging
-import numpy as np
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RetrievalResult:
     """Final retrieval result with context assembly."""
+
     query: str
     results: List[SearchResult]
 
@@ -26,8 +26,7 @@ class RetrievalResult:
         for i, r in enumerate(self.results, 1):
             source = r.chunk.metadata.get("filename", r.chunk.source)
             parts.append(
-                f"[Source {i}: {source} | Score: {r.score:.3f}]\n"
-                f"{r.chunk.text}"
+                f"[Source {i}: {source} | Score: {r.score:.3f}]\n" f"{r.chunk.text}"
             )
         return "\n\n---\n\n".join(parts)
 
@@ -116,8 +115,7 @@ class Retriever:
         """
         effective_top_k = top_k if top_k is not None else self.top_k
         effective_threshold = (
-            score_threshold if score_threshold is not None
-            else self.score_threshold
+            score_threshold if score_threshold is not None else self.score_threshold
         )
 
         # Step 1: Embed query
@@ -125,19 +123,16 @@ class Retriever:
 
         # Step 2: Vector search (fetch extra candidates if reranking)
         fetch_k = effective_top_k * 3 if self.rerank else effective_top_k
-        search_results = self.vector_store.search(
-            query_embedding, top_k=fetch_k
-        )
+        search_results = self.vector_store.search(query_embedding, top_k=fetch_k)
 
         # Step 3: Optional reranking
         if self.rerank and self._reranker and search_results:
             search_results = self._rerank_results(query, search_results)
 
         # Step 4: Filter by threshold and limit
-        filtered = [
-            r for r in search_results
-            if r.score >= effective_threshold
-        ][:effective_top_k]
+        filtered = [r for r in search_results if r.score >= effective_threshold][
+            :effective_top_k
+        ]
 
         logger.info(
             f"Retrieved {len(filtered)} chunks for query: "

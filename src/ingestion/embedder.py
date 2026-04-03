@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EmbeddedChunk:
     """A chunk enriched with its embedding vector."""
+
     chunk: Chunk
     embedding: np.ndarray
 
@@ -118,15 +119,12 @@ class OpenAIEmbedder(BaseEmbedder):
         try:
             import openai
         except ImportError:
-            raise ImportError(
-                "openai package required. Install: pip install openai"
-            )
+            raise ImportError("openai package required. Install: pip install openai")
 
         import os
+
         self.model = model
-        self._client = openai.OpenAI(
-            api_key=api_key or os.getenv("OPENAI_API_KEY")
-        )
+        self._client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
         # Dimension lookup for known models
         self._dimensions = {

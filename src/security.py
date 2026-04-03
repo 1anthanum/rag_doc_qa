@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 FILE_SIGNATURES = {
     ".pdf": [(0, b"%PDF")],
     ".docx": [(0, b"PK\x03\x04")],  # ZIP-based format
-    ".txt": [],   # No magic bytes; accept any content
-    ".md": [],    # No magic bytes; accept any content
+    ".txt": [],  # No magic bytes; accept any content
+    ".md": [],  # No magic bytes; accept any content
 }
 
 SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx"}
@@ -103,7 +103,7 @@ def validate_file_magic(content: bytes, extension: str) -> bool:
     for offset, magic in signatures:
         if len(content) < offset + len(magic):
             return False
-        if content[offset:offset + len(magic)] != magic:
+        if content[offset : offset + len(magic)] != magic:
             return False
 
     return True
@@ -139,8 +139,7 @@ def validate_upload(
     # Check size
     if len(content) > max_size:
         return safe_name, (
-            f"File exceeds maximum size of "
-            f"{max_size // (1024 * 1024)} MB"
+            f"File exceeds maximum size of " f"{max_size // (1024 * 1024)} MB"
         )
 
     # Check magic bytes

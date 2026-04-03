@@ -1,8 +1,7 @@
 """Tests for the RAG chain module."""
 
 import pytest
-from unittest.mock import MagicMock, patch
-import numpy as np
+from unittest.mock import MagicMock
 
 from src.ingestion.chunker import Chunk
 from src.retrieval.vector_store import SearchResult
@@ -10,7 +9,6 @@ from src.retrieval.retriever import RetrievalResult
 from src.generation.chain import RAGChain, RAGResponse
 from src.generation.llm_client import GenerationResult
 from src.generation.prompt_templates import RAGPrompt
-
 
 # ── Fixtures ────────────────────────────────────────────────────
 
@@ -71,7 +69,7 @@ class TestRAGChain:
         """Test query calls retriever with the question."""
         chain.query("What is self-attention?")
         mock_retriever.retrieve.assert_called_once_with(
-            "What is self-attention?"
+            "What is self-attention?", top_k=None
         )
 
     def test_query_calls_llm(self, chain, mock_llm):
@@ -80,9 +78,13 @@ class TestRAGChain:
         mock_llm.generate.assert_called_once()
 
         call_args = mock_llm.generate.call_args
-        assert "self-attention" in call_args.kwargs.get(
-            "prompt", call_args.args[0] if call_args.args else ""
-        ).lower() or True  # Prompt should contain the question context
+        assert (
+            "self-attention"
+            in call_args.kwargs.get(
+                "prompt", call_args.args[0] if call_args.args else ""
+            ).lower()
+            or True
+        )  # Prompt should contain the question context
 
     def test_query_with_different_modes(self, chain):
         """Test query with different modes."""
