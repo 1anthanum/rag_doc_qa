@@ -63,6 +63,12 @@ class BM25Retriever:
 
         self._chunks = list(chunks)
         self._corpus = [self._tokenize(c.text) for c in self._chunks]
+
+        if not self._corpus:
+            self._bm25 = None
+            logger.info("No chunks to index — BM25 index not built")
+            return
+
         self._bm25 = BM25Okapi(self._corpus)
 
         logger.info(f"Built BM25 index with {len(self._chunks)} chunks")

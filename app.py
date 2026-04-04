@@ -82,9 +82,7 @@ def init_pipeline():
     }
     strategy = strategy_map.get(chunk_strategy_str, ChunkingStrategy.RECURSIVE)
 
-    engine = EmbeddingEngine(
-        provider=embedding_provider, model_name=embedding_model
-    )
+    engine = EmbeddingEngine(provider=embedding_provider, model_name=embedding_model)
 
     # Semantic chunking needs embedder reference
     chunker_kwargs = {
@@ -283,14 +281,13 @@ def index_documents(uploaded_files):
 
     # Also build BM25 index for hybrid retrieval
     from src.retrieval.hybrid_retriever import HybridRetriever
+
     if isinstance(retriever, HybridRetriever):
         progress.progress(0.9, text="Building BM25 index...")
         retriever.index_sparse(chunks)
 
     progress.progress(1.0, text="Done!")
-    st.sidebar.success(
-        f"Indexed {len(documents)} documents → {len(chunks)} chunks"
-    )
+    st.sidebar.success(f"Indexed {len(documents)} documents → {len(chunks)} chunks")
 
 
 # ── Main Chat Interface ─────────────────────────────────────────
@@ -328,9 +325,7 @@ def render_chat(mode: str, top_k: int, temperature: float):
         # Check if documents are indexed
         if store.size == 0:
             msg = "Please upload and index documents first using the sidebar."
-            st.session_state.messages.append(
-                {"role": "assistant", "content": msg}
-            )
+            st.session_state.messages.append({"role": "assistant", "content": msg})
             with st.chat_message("assistant"):
                 st.warning(msg)
             return
@@ -353,11 +348,13 @@ def render_chat(mode: str, top_k: int, temperature: float):
                             for src in sources:
                                 st.markdown(f"- `{src}`")
 
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": response.answer,
-                        "sources": sources,
-                    })
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": response.answer,
+                            "sources": sources,
+                        }
+                    )
 
                 except Exception as e:
                     error_msg = f"Error: {str(e)}"
@@ -368,6 +365,7 @@ def render_chat(mode: str, top_k: int, temperature: float):
 
 
 # ── Main ────────────────────────────────────────────────────────
+
 
 def main():
     mode, top_k, temperature = render_sidebar()
