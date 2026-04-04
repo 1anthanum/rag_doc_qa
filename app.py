@@ -4,7 +4,6 @@ Provides a chat-like interface for uploading documents and asking questions.
 Supports: simple/hybrid retrieval, semantic chunking, query optimization, CRAG.
 """
 
-import os
 import tempfile
 import logging
 from pathlib import Path

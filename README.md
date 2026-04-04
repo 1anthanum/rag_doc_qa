@@ -239,6 +239,9 @@ rag-doc-qa/
 │   │   └── endpoints.py           # FastAPI REST API (rate-limited)
 │   ├── config.py                  # YAML config with env var overrides
 │   └── security.py                # Path traversal / file validation
+├── eval/
+│   ├── dataset.py                 # 3 docs + 12 annotated Q&A cases
+│   └── benchmark.py               # Automated multi-config evaluation
 ├── tests/                         # 111 tests (pytest + 100% new module coverage)
 ├── configs/
 │   └── default.yaml               # Default configuration (all feature toggles)
@@ -250,6 +253,28 @@ rag-doc-qa/
 ├── .env.example
 └── requirements.txt
 ```
+
+## Evaluation Benchmark
+
+Automated end-to-end evaluation comparing pipeline configurations. Measures retrieval recall, top-1 hit rate, answer keyword coverage, and latency across 12 annotated test cases (3 difficulty levels, 4 question categories).
+
+```bash
+# Retrieval-only mode: FREE, no LLM calls, fast
+python -m eval.benchmark --retrieval-only
+
+# Full end-to-end evaluation (requires API key)
+python -m eval.benchmark
+
+# Compare specific configurations
+python -m eval.benchmark --configs baseline hybrid hybrid_hyde_crag -v
+
+# Save report to file
+python -m eval.benchmark --output eval_report.md --json eval_results.json
+```
+
+**Available configurations**: `baseline` (dense only), `hybrid` (BM25 + RRF), `hybrid_hyde` (+ HyDE query optimization), `hybrid_hyde_crag` (+ Corrective RAG self-correction).
+
+The benchmark generates a Markdown report with summary tables, per-difficulty breakdowns, per-question details, and delta-vs-baseline comparisons.
 
 ## Testing
 
