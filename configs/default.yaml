@@ -11,8 +11,9 @@ ingestion:
     semantic_threshold: 0.5    # Similarity threshold for semantic chunking
   embedding:
     provider: local            # local | openai
-    model: all-MiniLM-L6-v2   # local: sentence-transformers model
-    # model: text-embedding-3-small  # openai model
+    model: BAAI/bge-small-zh-v1.5  # Chinese/English bilingual (512-dim)
+    # model: all-MiniLM-L6-v2      # English only (384-dim)
+    # model: text-embedding-3-small # openai model (1536-dim)
     batch_size: 32
 
 # ── Retrieval ───────────────────────────────────────────────────
@@ -49,12 +50,16 @@ retrieval:
 
 # ── Generation ──────────────────────────────────────────────────
 generation:
-  provider: openai             # openai | ollama
-  model: gpt-4o-mini
+  provider: anthropic          # anthropic | openai | ollama
+  model: claude-sonnet-4-20250514
   temperature: 0.1
   max_tokens: 1024
 
-  # Ollama-specific settings
+  # Anthropic-specific settings
+  anthropic:
+    api_key: null              # Falls back to ANTHROPIC_API_KEY env var
+
+  # Ollama-specific settings (local, free)
   ollama:
     base_url: http://localhost:11434
     model: llama3.1

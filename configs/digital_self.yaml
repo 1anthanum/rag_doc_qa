@@ -1,0 +1,60 @@
+# ── Digital Self RAG Configuration ────────────────────────────
+# Specialized config for conversation-based personal knowledge RAG.
+# Overlays on top of configs/default.yaml — only overrides are needed.
+#
+# Usage:
+#   DIGITAL_SELF_CONFIG=configs/digital_self.yaml python scripts/index_conversations.py
+
+# ── Conversation Ingestion ────────────────────────────────────
+conversation:
+  # Chunking strategy: turn_group | whole | decision_point
+  strategy: turn_group
+
+  # Number of consecutive turns per chunk
+  turns_per_chunk: 4
+
+  # Overlapping turns between adjacent chunks (for context continuity)
+  overlap_turns: 1
+
+  # Minimum character length to keep a chunk (filters out trivial exchanges)
+  min_chunk_length: 50
+
+# ── Embedding (same as default, repeated for clarity) ─────────
+ingestion:
+  embedding:
+    provider: local
+    model: BAAI/bge-small-zh-v1.5
+
+# ── Retrieval ─────────────────────────────────────────────────
+retrieval:
+  mode: hybrid
+  top_k: 5
+
+  hybrid_search:
+    enabled: true
+    dense_weight: 0.7
+    sparse_weight: 0.3
+    rrf_k: 60
+
+  # Behavioral HyDE: generates a hypothetical user conversation turn
+  # instead of a hypothetical document paragraph.
+  query_processing:
+    enabled: true
+    strategy: hyde
+    domain: behavioral   # switches to BEHAVIORAL_HYDE_PROMPT
+
+# ── Generation ────────────────────────────────────────────────
+generation:
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+# ── Agentic (optional, off by default for latency) ───────────
+agentic:
+  enabled: false
+  max_correction_rounds: 2
+  adaptive_retrieval: true
+
+# ── Index Persistence ─────────────────────────────────────────
+index:
+  # Directory for FAISS index + chunk metadata (relative to project root)
+  persist_dir: data/digital_self_index

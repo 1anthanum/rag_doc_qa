@@ -40,6 +40,16 @@ HYDE_PROMPT = (
     "Hypothetical document passage:"
 )
 
+BEHAVIORAL_HYDE_PROMPT = (
+    "You are simulating a user's conversational style. Given the following "
+    "question about a person's behavior, preferences, or past statements, "
+    "generate a short hypothetical conversation excerpt where the user "
+    "discusses this topic naturally. Write it as a realistic dialogue turn "
+    "that might appear in a chat log.\n\n"
+    "Question: {question}\n\n"
+    "Hypothetical conversation excerpt:"
+)
+
 DECOMPOSE_PROMPT = (
     "You are a research assistant. Break down the following complex question "
     "into 2-4 simpler sub-questions that, when answered together, would "
@@ -75,7 +85,17 @@ class QueryProcessor:
         llm: LLMClient,
         strategy: str = "none",
         max_retries: int = 1,
+        domain: Optional[str] = None,
     ):
+        """
+        Args:
+            llm: LLM client for query processing.
+            strategy: Query strategy — none | rewrite | hyde | decompose.
+            max_retries: Max retries on LLM call failure.
+            domain: Optional domain hint that selects specialized prompts.
+                    Currently supported: "behavioral" (for conversation-based
+                    RAG — uses BEHAVIORAL_HYDE_PROMPT instead of standard HyDE).
+        """
         try:
             self.strategy = QueryStrategy(strategy)
         except ValueError:
@@ -86,6 +106,7 @@ class QueryProcessor:
 
         self.llm = llm
         self.max_retries = max_retries
+        self.domain = domain
 
     def process(self, question: str) -> "QueryResult":
         """
@@ -161,9 +182,16 @@ class QueryProcessor:
         HyDE: Generate a hypothetical document passage, then use it
         as the retrieval query. The hypothesis is closer in embedding
         space to actual document passages than the original question.
+
+        When domain="behavioral", uses BEHAVIORAL_HYDE_PROMPT to generate
+        a hypothetical conversation excerpt instead of a document passage.
+        This improves retrieval for conversation-based knowledge bases.
         """
         try:
-            prompt = HYDE_PROMPT.format(question=question)
+            if self.domain == "behavioral":
+                prompt = BEHAVIORAL_HYDE_PROMPT.format(question=question)
+            else:
+                prompt = HYDE_PROMPT.format(question=question)
             gen = self.llm.generate(
                 prompt=prompt,
                 temperature=0.5,

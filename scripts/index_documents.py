@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Index documents for RAG Q&A"
-    )
+    parser = argparse.ArgumentParser(description="Index documents for RAG Q&A")
     parser.add_argument(
         "input",
         help="Path to a file or directory of documents",

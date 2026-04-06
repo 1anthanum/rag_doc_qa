@@ -39,6 +39,7 @@ _ENV_MAPPINGS = {
     "generation.max_tokens": "LLM_MAX_TOKENS",
     "retrieval.top_k": "RETRIEVAL_TOP_K",
     "retrieval.vector_store": "VECTOR_STORE",
+    "generation.anthropic.api_key": "ANTHROPIC_API_KEY",
     "api.host": "API_HOST",
     "api.port": "API_PORT",
     "app.max_file_size_mb": "MAX_FILE_SIZE_MB",

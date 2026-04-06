@@ -20,8 +20,10 @@ faiss-cpu==1.8.0
 
 # ── Sparse Retrieval (Hybrid Search) ──────────────────────────
 rank-bm25==0.2.2
+jieba==0.42.1              # Chinese word segmentation for BM25
 
 # ── LLM Clients ────────────────────────────────────────────────
+anthropic>=0.42.0          # Claude API
 openai==1.50.0
 requests==2.32.3
 

@@ -1,6 +1,6 @@
 """
 LLM client abstraction layer.
-Supports OpenAI API and local Ollama for generation.
+Supports Anthropic (Claude), OpenAI, and local Ollama for generation.
 """
 
 import logging
@@ -151,5 +151,70 @@ class OllamaClient(LLMClient):
                 "prompt_tokens": prompt_tokens,
                 "completion_tokens": completion_tokens,
                 "total_tokens": prompt_tokens + completion_tokens,
+            },
+        )
+
+
+class AnthropicClient(LLMClient):
+    """
+    Anthropic API client for Claude models.
+
+    Usage:
+        client = AnthropicClient(model="claude-sonnet-4-20250514")
+        result = client.generate("Explain quantum computing.")
+
+    Note:
+        Requires ANTHROPIC_API_KEY environment variable or explicit api_key.
+        Anthropic's API differs from OpenAI in that:
+        - system prompt is a top-level parameter, not a message role
+        - max_tokens is required (not optional)
+    """
+
+    def __init__(
+        self,
+        model: str = "claude-sonnet-4-20250514",
+        api_key: Optional[str] = None,
+    ):
+        try:
+            import anthropic
+        except ImportError:
+            raise ImportError("anthropic required. Install: pip install anthropic")
+
+        self.model = model
+        self._client = anthropic.Anthropic(
+            api_key=api_key or os.getenv("ANTHROPIC_API_KEY")
+        )
+        logger.info(f"Initialized Anthropic client with model: {model}")
+
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.1,
+        max_tokens: int = 1024,
+    ) -> GenerationResult:
+        kwargs = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        if system_prompt:
+            kwargs["system"] = system_prompt
+
+        response = self._client.messages.create(**kwargs)
+
+        # Extract text from content blocks
+        text = "".join(block.text for block in response.content if block.type == "text")
+
+        return GenerationResult(
+            text=text,
+            model=self.model,
+            usage={
+                "prompt_tokens": response.usage.input_tokens,
+                "completion_tokens": response.usage.output_tokens,
+                "total_tokens": (
+                    response.usage.input_tokens + response.usage.output_tokens
+                ),
             },
         )

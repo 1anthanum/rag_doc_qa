@@ -26,8 +26,15 @@ class BM25Retriever:
         results = bm25.search("budget allocation", top_k=10)
     """
 
-    # Simple tokenizer: split on non-alphanumeric (handles CJK + Latin)
+    # Regex tokenizer for Latin/English text
     TOKEN_PATTERN = re.compile(r"[\w\u4e00-\u9fff]+", re.UNICODE)
+
+    # CJK character ranges for language detection
+    _CJK_PATTERN = re.compile(r"[\u4e00-\u9fff]")
+
+    # jieba availability (lazy-loaded)
+    _jieba = None
+    _jieba_checked = False
 
     def __init__(self):
         self._bm25 = None
@@ -38,8 +45,46 @@ class BM25Retriever:
     def size(self) -> int:
         return len(self._chunks)
 
+    @classmethod
+    def _get_jieba(cls):
+        """Lazy-load jieba (optional dependency)."""
+        if not cls._jieba_checked:
+            try:
+                import jieba
+
+                jieba.setLogLevel(logging.WARNING)  # Suppress jieba init logs
+                cls._jieba = jieba
+                logger.info("jieba loaded — Chinese word segmentation enabled")
+            except ImportError:
+                cls._jieba = None
+                logger.debug(
+                    "jieba not installed — falling back to regex tokenizer "
+                    "for Chinese text. Install: pip install jieba"
+                )
+            cls._jieba_checked = True
+        return cls._jieba
+
     def _tokenize(self, text: str) -> List[str]:
-        """Tokenize text into lowercase tokens."""
+        """
+        Tokenize text into lowercase tokens.
+
+        Uses jieba for Chinese text (if available) and regex for English.
+        Mixed text is handled by detecting CJK characters first.
+        """
+        has_cjk = bool(self._CJK_PATTERN.search(text))
+
+        if has_cjk:
+            jieba_mod = self._get_jieba()
+            if jieba_mod is not None:
+                # jieba word segmentation: proper Chinese tokenization
+                return [
+                    t.lower()
+                    for t in jieba_mod.lcut(text)
+                    if len(t.strip()) > 1
+                    and not re.match(r"^[\s\W]+$", t)  # filter punctuation
+                ]
+
+        # Fallback: regex tokenizer (English or no-jieba Chinese)
         return [
             t.lower()
             for t in self.TOKEN_PATTERN.findall(text)

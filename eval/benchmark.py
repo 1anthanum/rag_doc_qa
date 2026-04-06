@@ -6,7 +6,7 @@ Compares retrieval quality and answer accuracy across different pipeline
 configurations (baseline, hybrid, hybrid+HyDE, hybrid+HyDE+CRAG).
 
 Usage:
-    export OPENAI_API_KEY="sk-..."
+    export ANTHROPIC_API_KEY="sk-ant-..."
     python -m eval.benchmark                    # Run all configs
     python -m eval.benchmark --configs baseline hybrid   # Specific configs
     python -m eval.benchmark --retrieval-only   # Skip generation (no LLM cost)
@@ -170,11 +170,17 @@ def build_pipeline(config: dict, retrieval_only: bool = False):
 
     llm = None
     if needs_llm:
-        from src.generation.llm_client import OpenAIClient, OllamaClient
+        from src.generation.llm_client import (
+            OpenAIClient,
+            OllamaClient,
+            AnthropicClient,
+        )
 
-        provider = cfg("generation.provider", "openai")
-        model = cfg("generation.model", "gpt-4o-mini")
-        if provider == "ollama":
+        provider = cfg("generation.provider", "anthropic")
+        model = cfg("generation.model", "claude-sonnet-4-20250514")
+        if provider == "anthropic":
+            llm = AnthropicClient(model=model)
+        elif provider == "ollama":
             llm = OllamaClient(model=model)
         else:
             llm = OpenAIClient(model=model)
@@ -584,8 +590,14 @@ def main():
             for c in config_names
         )
         if needs_llm or not args.retrieval_only:
-            provider = os.environ.get("LLM_PROVIDER", "openai")
-            if provider == "openai" and not os.environ.get("OPENAI_API_KEY"):
+            provider = os.environ.get("LLM_PROVIDER", "anthropic")
+            if provider == "anthropic" and not os.environ.get("ANTHROPIC_API_KEY"):
+                print(
+                    "Warning: ANTHROPIC_API_KEY not set. Use --retrieval-only for free eval,"
+                )
+                print("or set LLM_PROVIDER=ollama for local LLM.")
+                print()
+            elif provider == "openai" and not os.environ.get("OPENAI_API_KEY"):
                 print(
                     "Warning: OPENAI_API_KEY not set. Use --retrieval-only for free eval,"
                 )
