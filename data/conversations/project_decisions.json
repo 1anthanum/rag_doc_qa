@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "topic": "项目架构决策",
+    "date": "2025-01-10",
+    "participants": ["user", "assistant"]
+  },
+  "turns": [
+    {
+      "role": "user",
+      "content": "我在做一个 RAG 项目，检索部分用 FAISS 还是 ChromaDB？",
+      "timestamp": "2025-01-10T09:00:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "FAISS 更适合你的场景。它是纯内存的，没有外部依赖，启动快，API 简单。ChromaDB 多了持久化和元数据过滤，但对于演示项目来说是额外的复杂度。",
+      "timestamp": "2025-01-10T09:01:00Z"
+    },
+    {
+      "role": "user",
+      "content": "好，那 embedding 模型呢？我考虑过 OpenAI 的 text-embedding-ada-002 和本地的 sentence-transformers。",
+      "timestamp": "2025-01-10T09:02:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "建议默认用本地模型（比如 bge-small-zh-v1.5），好处是不依赖 API、无成本、支持中英文。OpenAI embedding 质量更高但增加了外部依赖和费用。可以做成可配置的，默认本地，可选 OpenAI。",
+      "timestamp": "2025-01-10T09:03:00Z"
+    },
+    {
+      "role": "user",
+      "content": "嗯，我也这么想。另外 LLM 方面，我打算用 Claude API。比 OpenAI 便宜而且效果不错。",
+      "timestamp": "2025-01-10T09:04:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Claude 是个好选择。Anthropic 的 API 设计比较干净，system prompt 是顶层参数而不是塞在 messages 里。价格方面 Sonnet 确实比 GPT-4o-mini 有竞争力。同时保留 Ollama 支持，这样演示时可以完全离线。",
+      "timestamp": "2025-01-10T09:05:00Z"
+    },
+    {
+      "role": "user",
+      "content": "对，三个后端：Claude 默认、OpenAI 备选、Ollama 离线。这个项目主要是面试用的，所以要展示技术深度。",
+      "timestamp": "2025-01-10T09:06:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "面试展示的关键不是功能多，而是能解释'为什么选这个方案'。比如为什么用 RRF 而不是 CombSUM，为什么用 semantic chunking 而不是 fixed-size。Design Decision 文档比代码本身更能体现工程判断力。",
+      "timestamp": "2025-01-10T09:07:00Z"
+    },
+    {
+      "role": "user",
+      "content": "说得对。我会把每个技术选型的理由写在 README 里。",
+      "timestamp": "2025-01-10T09:08:00Z"
+    }
+  ]
+}

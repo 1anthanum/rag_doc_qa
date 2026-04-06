@@ -6,9 +6,12 @@ A self-contained demo that walks through the full pipeline step by step,
 printing intermediate results so you can see exactly how each component works.
 
 Usage:
-    # With OpenAI (default)
-    export OPENAI_API_KEY="sk-..."
+    # With Anthropic Claude (default)
+    export ANTHROPIC_API_KEY="sk-ant-..."
     python demo.py
+
+    # With OpenAI
+    LLM_PROVIDER=openai OPENAI_API_KEY="sk-..." python demo.py
 
     # Fully local (Ollama + local embeddings)
     LLM_PROVIDER=ollama python demo.py
@@ -118,12 +121,14 @@ def build_pipeline(args):
     from src.retrieval import FAISSVectorStore, Retriever, HybridRetriever
     from src.retrieval.query_processor import QueryProcessor
     from src.generation import RAGChain, AgenticRAGChain
-    from src.generation.llm_client import OpenAIClient, OllamaClient
+    from src.generation.llm_client import OpenAIClient, OllamaClient, AnthropicClient
 
     # LLM
-    provider = cfg("generation.provider", "openai")
-    model = cfg("generation.model", "gpt-4o-mini")
-    if provider == "ollama":
+    provider = cfg("generation.provider", "anthropic")
+    model = cfg("generation.model", "claude-sonnet-4-20250514")
+    if provider == "anthropic":
+        llm = AnthropicClient(model=model)
+    elif provider == "ollama":
         llm = OllamaClient(model=model)
     else:
         llm = OpenAIClient(model=model)

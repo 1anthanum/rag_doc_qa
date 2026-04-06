@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "topic": "技术选型偏好",
+    "date": "2024-11-15",
+    "participants": ["user", "assistant"]
+  },
+  "turns": [
+    {
+      "role": "user",
+      "content": "我在选后端框架，FastAPI 和 Flask 你觉得哪个好？",
+      "timestamp": "2024-11-15T10:00:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "这取决于项目需求。FastAPI 的优势是自带类型校验（Pydantic）、自动生成 OpenAPI 文档、原生异步支持。Flask 更成熟，生态更丰富，学习曲线平缓。如果是新的 API 项目，我倾向 FastAPI。",
+      "timestamp": "2024-11-15T10:01:00Z"
+    },
+    {
+      "role": "user",
+      "content": "我也喜欢 FastAPI，主要是类型安全和自动文档。那数据库呢？我一直用 PostgreSQL。",
+      "timestamp": "2024-11-15T10:02:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "PostgreSQL 是很好的选择。它的 JSON 支持、全文搜索、扩展生态（PostGIS、pgvector）都很强。对于向量检索场景，pgvector 可以直接在 PostgreSQL 里做 ANN 搜索，不需要额外的向量数据库。",
+      "timestamp": "2024-11-15T10:03:00Z"
+    },
+    {
+      "role": "user",
+      "content": "对，pgvector 我用过，确实方便。我不太想引入太多中间件，能用一个数据库解决就不引入第二个。",
+      "timestamp": "2024-11-15T10:04:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "这是一个很务实的工程原则——最小化外部依赖。每多一个组件就多一个运维负担和故障点。这也是为什么 SQLite 在嵌入式场景这么受欢迎。",
+      "timestamp": "2024-11-15T10:05:00Z"
+    },
+    {
+      "role": "user",
+      "content": "没错。部署方面我比较喜欢 Docker + GitHub Actions，简单直接。Kubernetes 目前对我来说太重了。",
+      "timestamp": "2024-11-15T10:06:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "同意。Kubernetes 适合大规模微服务，但个人项目或小团队用 Docker Compose + CI/CD 就够了。过度工程化反而会拖慢开发速度。",
+      "timestamp": "2024-11-15T10:07:00Z"
+    }
+  ]
+}

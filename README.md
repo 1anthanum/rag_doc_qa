@@ -22,7 +22,7 @@ flowchart TB
         direction LR
         L["Loader\nPDF / DOCX / TXT / MD"]
         C["Chunker\n4 strategies"]
-        E["Embedder\nlocal / OpenAI"]
+        E["Embedder\nlocal (bge-zh) / OpenAI"]
         L --> C --> E
     end
 
@@ -40,7 +40,7 @@ flowchart TB
     subgraph Generation["③ Generation"]
         direction LR
         PT["Prompt Templates\nQA / summarize / compare / chat"]
-        LLM["LLM Client\nOpenAI GPT-4o / Ollama"]
+        LLM["LLM Client\nClaude / OpenAI / Ollama"]
         CRAG["CRAG Loop\nevaluate → rewrite → re-retrieve"]
         PT --> LLM
         LLM --> CRAG
@@ -60,7 +60,7 @@ See the system in action — no configuration needed:
 # Install & run
 git clone https://github.com/1anthanum/rag_doc_qa.git && cd rag-doc-qa
 pip install -r requirements.txt
-export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Basic demo (built-in sample document)
 python demo.py
@@ -88,7 +88,7 @@ The demo walks through each pipeline stage and prints intermediate results — c
   Chunks: 5 (chunk_size=512, overlap=64)
 
 [Step 3] Embed & Index
-  Model: local/all-MiniLM-L6-v2
+  Model: local/BAAI/bge-small-zh-v1.5
   Indexed: 5 chunks in 0.043s
 
 [Step 4] Retrieve
@@ -101,7 +101,7 @@ The demo walks through each pipeline stage and prints intermediate results — c
   ...
 
 [Step 5] Generate Answer
-  LLM: openai/gpt-4o-mini
+  LLM: anthropic/claude-sonnet-4-20250514
   Mode: Corrective RAG (CRAG)
 
   Answer: Self-attention computes a weighted sum of value vectors...
@@ -151,7 +151,7 @@ Both are supported, but FAISS is the default because it's an in-memory, single-b
 
 **Retrieval** — FAISS and ChromaDB vector stores with cosine similarity. BM25 sparse retrieval for keyword matching. Hybrid search with Reciprocal Rank Fusion. Query optimization via rewriting, HyDE, and decomposition. Optional cross-encoder reranking.
 
-**Generation** — Four query modes (QA, summarize, compare, conversational with chat history). Corrective RAG with automatic query rewriting. Adaptive retrieval that skips document search for conversational follow-ups. OpenAI and Ollama backends for cloud or fully local operation.
+**Generation** — Four query modes (QA, summarize, compare, conversational with chat history). Corrective RAG with automatic query rewriting. Adaptive retrieval that skips document search for conversational follow-ups. Anthropic Claude, OpenAI, and Ollama backends for cloud or fully local operation.
 
 **Infrastructure** — Streamlit chat UI with document upload and source citations. FastAPI REST API with rate limiting and security hardening. Docker + GitHub Actions CI/CD. Config-driven: all features toggleable via YAML without code changes.
 
@@ -163,8 +163,8 @@ git clone https://github.com/1anthanum/rag_doc_qa.git
 cd rag-doc-qa
 pip install -r requirements.txt
 
-# 2. Set your API key (or use Ollama for fully local)
-export OPENAI_API_KEY="sk-..."
+# 2. Set your API key (default: Anthropic Claude; or use Ollama for fully local)
+export ANTHROPIC_API_KEY="sk-ant-..."
 
 # 3. Run the Streamlit app
 streamlit run app.py
@@ -231,12 +231,15 @@ rag-doc-qa/
 │   │   ├── hybrid_retriever.py    # Hybrid search + RRF fusion
 │   │   └── query_processor.py     # Query rewrite / HyDE / decomposition
 │   ├── generation/
-│   │   ├── llm_client.py          # OpenAI & Ollama LLM clients
+│   │   ├── llm_client.py          # Anthropic, OpenAI & Ollama LLM clients
 │   │   ├── prompt_templates.py    # RAG + CRAG prompt engineering
 │   │   ├── chain.py               # Standard RAG orchestration
 │   │   └── agentic_chain.py       # CRAG self-correction + adaptive retrieval
 │   ├── api/
 │   │   └── endpoints.py           # FastAPI REST API (rate-limited)
+│   ├── digital_self/              # Conversation-based personal RAG
+│   │   ├── indexer.py             # Build FAISS index from conversations
+│   │   └── connector.py          # Query interface with behavioral HyDE
 │   ├── config.py                  # YAML config with env var overrides
 │   └── security.py                # Path traversal / file validation
 ├── eval/
@@ -244,7 +247,8 @@ rag-doc-qa/
 │   └── benchmark.py               # Automated multi-config evaluation
 ├── tests/                         # 111 tests (pytest + 100% new module coverage)
 ├── configs/
-│   └── default.yaml               # Default configuration (all feature toggles)
+│   ├── default.yaml               # Default configuration (all feature toggles)
+│   └── digital_self.yaml          # Conversation RAG config (behavioral HyDE)
 ├── docs/
 │   ├── tutorial.md                # Beginner tutorial (Chinese)
 │   └── how-it-works.md            # System internals explained (Chinese)
@@ -284,9 +288,29 @@ pytest tests/ -v
 
 # With coverage report
 pytest tests/ -v --cov=src --cov-report=term-missing
+
+# Full smoke test (unit tests + benchmark + Digital Self + Chinese tokenization)
+bash scripts/smoke_test.sh
 ```
 
 Test coverage includes: BM25 retriever, hybrid search + RRF fusion, semantic chunking, query processor (rewrite/HyDE/decompose), agentic chain (CRAG loop, adaptive retrieval), plus all original modules.
+
+### Digital Self (Conversation RAG)
+
+The system includes a conversation-based personal RAG module. Sample conversations are provided in `data/conversations/`.
+
+```bash
+# Index conversation data
+python scripts/index_conversations.py --input data/conversations/ --config configs/digital_self.yaml
+
+# Test conversation loading
+python -c "
+from src.ingestion.conversation_loader import ConversationLoader
+loader = ConversationLoader(strategy='turn_group', turns_per_chunk=4, overlap_turns=1)
+chunks = loader.load_and_chunk('data/conversations/tech_preferences.json')
+print(f'{len(chunks)} chunks loaded')
+"
+```
 
 ## Tech Stack
 
@@ -294,11 +318,11 @@ Test coverage includes: BM25 retriever, hybrid search + RRF fusion, semantic chu
 |-------------|------------------------------------------|------------------------------------------------|
 | Frontend    | Streamlit                                | Fastest path to interactive UI, built-in chat  |
 | API         | FastAPI + Uvicorn                        | Async, auto-docs (OpenAPI), production-ready   |
-| Embeddings  | sentence-transformers / OpenAI API       | Local-first for privacy, OpenAI for quality    |
+| Embeddings  | sentence-transformers (bge-zh) / OpenAI  | Bilingual Chinese/English, local-first         |
 | Vector DB   | FAISS (default) / ChromaDB              | In-memory speed; ChromaDB for persistence      |
-| Sparse      | rank-bm25 (BM25Okapi)                   | Industry-standard lexical retrieval            |
+| Sparse      | rank-bm25 + jieba (Chinese seg)          | Lexical retrieval with CJK word segmentation   |
 | Reranking   | cross-encoder/ms-marco-MiniLM           | Two-stage retrieval for precision              |
-| LLM         | OpenAI GPT-4o-mini / Ollama (local)     | Cloud quality or fully local / private         |
+| LLM         | Anthropic Claude / OpenAI / Ollama       | Claude default; OpenAI or local Ollama options  |
 | CI/CD       | GitHub Actions + Docker                  | Automated testing and reproducible deployment  |
 
 ## Documentation

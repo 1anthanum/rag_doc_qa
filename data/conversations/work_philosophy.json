@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "topic": "工作理念与方法论",
+    "date": "2024-12-03",
+    "participants": ["user", "assistant"]
+  },
+  "turns": [
+    {
+      "role": "user",
+      "content": "你觉得代码审查重要吗？有些团队觉得浪费时间。",
+      "timestamp": "2024-12-03T14:00:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Code review 非常重要，但要做对。好的 review 关注设计决策和潜在 bug，而不是纠结代码风格（那是 linter 的活）。如果 review 变成了形式主义，那确实浪费时间。",
+      "timestamp": "2024-12-03T14:01:00Z"
+    },
+    {
+      "role": "user",
+      "content": "我同意。我倾向于 review 重点放在'为什么这样设计'而不是'这行代码怎么写'。另外我觉得测试也很重要，但不追求 100% 覆盖率。",
+      "timestamp": "2024-12-03T14:02:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "测试覆盖率的黄金区间大概在 70-85%。100% 覆盖率意味着你在测试 getter/setter 这种没什么价值的代码。关键是覆盖核心业务逻辑和边界条件。",
+      "timestamp": "2024-12-03T14:03:00Z"
+    },
+    {
+      "role": "user",
+      "content": "对，我的项目通常目标是 70% 以上。还有我比较喜欢写文档，尤其是 Design Decision 文档，记录当时为什么选 A 不选 B。",
+      "timestamp": "2024-12-03T14:04:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "ADR（Architecture Decision Record）是一个非常好的实践。三个月后回头看代码，最难理解的不是代码本身，而是'为什么不用另一种方案'。记录决策上下文比记录实现细节更有长期价值。",
+      "timestamp": "2024-12-03T14:05:00Z"
+    },
+    {
+      "role": "user",
+      "content": "说到方法论，我不太喜欢严格的 Scrum。感觉每日站会有时候是浪费，特别是远程团队。我更倾向异步沟通。",
+      "timestamp": "2024-12-03T14:06:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "异步优先是远程团队的核心理念。GitLab 和 Basecamp 都是这方面的成功案例。关键信息写下来而不是说出来，这样不同时区的人都能参与。会议应该是最后手段，而不是默认选项。",
+      "timestamp": "2024-12-03T14:07:00Z"
+    }
+  ]
+}
